@@ -51,7 +51,7 @@ modificar el archivo `constantes.h`, el cual contiene las siguientes opciones:
 - Cadena de fin de juego.
 - Cadena de inicio de juego.
 - ID's para cada dificultad (fácil, media y difícil).
-- Longitud máxim de palabra para cada dificultad (fácil, media y difícil).
+- Longitud máxima de palabra para cada dificultad (fácil, media y difícil).
 
 ### Configuraciones específicas al servidor.
 

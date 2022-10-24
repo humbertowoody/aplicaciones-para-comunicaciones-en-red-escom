@@ -46,6 +46,7 @@ int main(void) // No se requieren argumentos para el programa principal.
       nombre_archivo_con_extension[TAM_BUFFER], // El nombre del archivo con extensión adecuada.
       comando_final[TAM_BUFFER];                // El comando final a ser usado para descomprimir/comprimir la información.
   FILE *archivo;                                // Variable para nmanipular un archivo particular.
+  struct stat informacion_stat;                 // Estructura para almacenar la información de un archivo/carpeta.
 
   // Información inicial del programa.
   printf("\tPráctica 1 - Envío/Recepción de archivos - Servidor\n\n");
@@ -248,6 +249,154 @@ int main(void) // No se requieren argumentos para el programa principal.
 
     case OPERACION_DESCARGAR_ARCHIVOS:
       printf("Se ha recibido la instrucción para descargar archivos.\n");
+
+      // Recibimos la ruta destino del archivo.
+      temporal_resultados = recv(
+          descriptor_socket_cliente, // Descriptor del socket mediante el cual recibiremos la información
+          buffer,                    // Guardaremos aquí la ruta destino.
+          sizeof(buffer),            // El tamaño de la variable para la ruta destino.
+          0                          // Sin opciones.
+      );
+
+      // Validamos que hayamos recibido algo.
+      if (temporal_resultados <= 0)
+      {
+        // Mensaje de error.
+        printf("Error: No se ha recibido una ruta destino desde el cliente.\n");
+        printf("Inténtalo de nuevo más tarde.\n\n");
+
+        // Salimos de la operación.
+        break;
+      }
+
+      // Añadimos nuestro EOF a la cadena.
+      buffer[temporal_resultados] = '\0';
+
+      // Imprimimos la información.
+      printf("\t- La ruta del archivo/carpeta a comprimir y desacargar es: %s\n", buffer);
+
+      // Generamos la ruta usando la carpeta del servidor.
+      sprintf(ruta_destino, "%s/%s", CARPETA_SERVIDOR, buffer);
+
+      // Validamos que la ruta exista.
+      if (lstat(ruta_destino, &informacion_stat) != 0)
+      {
+        // Mostramos mensaje de error.
+        printf("Error: La ruta origen especificada (%s) no existe o el programa no cuenta con persmiso para acceder a ella.\n", ruta_destino);
+        printf("Inténtalo de nuevo más tarde.\n\n");
+
+        // Finalizamos la operación.
+        break;
+      }
+
+      // Creamos el comando zip.
+      sprintf(comando_final, "zip %s -r %s", NOMBRE_ARCHIVO_ZIP_SERVIDOR, ruta_destino);
+
+      // Debug para mostrar el comando a ser ejecutado.
+      printf("Debug comando zip: %s\n", comando_final);
+
+      // Generamos el archivo zip con la ruta especificada.
+      temporal_resultados = system(comando_final);
+
+      // Validamos que se haya creado el archivo zip.
+      if (temporal_resultados != 0)
+      {
+        // Mostramos mensaje de error.
+        printf("Error: Ha ocurrido un problema generando el archivo comprimido con los datos a enviar al cliente.\n");
+        printf("Inténtalo de nuevo más tarde.\n\n");
+
+        // Salimos de la operación.
+        break;
+      }
+
+      // Generamos el nombre del archivo con extensión.
+      sprintf(nombre_archivo_con_extension, "%s.zip", NOMBRE_ARCHIVO_ZIP_SERVIDOR);
+
+      // Abrimos el archivo .zip en modo de solo lectura.
+      archivo = fopen(nombre_archivo_con_extension, "r");
+
+      // Obtenemos el tamaño del archivo comprimido.
+      fseek(archivo, 0L, SEEK_END);      // Posicionamos el cursor al final del archivo.
+      longitud_archivo = ftell(archivo); // Calculamos los bytes (posición actual del cursor).
+      rewind(archivo);                   // Regresamos el cursor al inicio del archivo.
+
+      // Imprimimos el tamaño del archivo.
+      printf("\t- El archivo comprimido a enviar mide: %li bytes.\n", longitud_archivo);
+
+      // Colocamos en el buffer la longitud del archivo.
+      sprintf(buffer, "%li", longitud_archivo);
+
+      // Enviamos la longitud del archivo.
+      temporal_resultados = send(
+          descriptor_socket_cliente, // El descriptor del socket mediatne el cual se enviará la información.
+          buffer,                    // El buffer que contiene la longitud del archivo comprimido.
+          sizeof(buffer),            // El tamaño del buffer a enviar.
+          0                          // Sin opciones.
+      );
+
+      // Verificamos que se haya enviado la longitud del archivo.
+      if (temporal_resultados <= 0)
+      {
+        // Mostramos mensaje de error.
+        printf("Error: No se ha podido enviar la longitud del archivo comprimido al cliente.\n");
+        printf("Inténtalo de nuevo más tarde.\n\n");
+
+        // Salimos de operación.
+        break;
+      }
+
+      // Imprimimos mensaje sobre inicio de transmisión de inforación.
+      printf("Enviando información:\n");
+
+      // Ciclo para enviar los datos.
+      datos_recibidos = 0; // En realidad son los datos enviados.
+      while (datos_recibidos < longitud_archivo)
+      {
+        // Limpiamos el buffer.
+        memset(buffer, 0, sizeof(buffer));
+
+        // Leemos TAM_BUFFER datos del archivo al buffer.
+        temporal_resultados = fread(
+            buffer,         // Dónde guardar los datos leídos.
+            1,              // Cuánto mide cada dato.
+            sizeof(buffer), // El número de datos a leer (máximo)
+            archivo         // El origen de los datos.
+        );
+
+        // Aumentamos nuestro contador.
+        datos_recibidos += temporal_resultados;
+
+        // Enviamos nuestro buffer al socket.
+        temporal_resultados = send(
+            descriptor_socket_cliente, // El socket a través del cual enviaremos los datos.
+            buffer,                    // El buffer con los datos.
+            temporal_resultados,       // El tamaño de datos a enviar
+            0                          // Sin opciones.
+        );
+
+        // Validamos que hayamos enviado los datos correctamente.
+        if (temporal_resultados <= 0)
+        {
+          // Mostramos un mensaje de error.
+          printf("Error: Ocurrió un problema enviando el buffer de datos.\n");
+          printf("Inténtalo de nuevo más tarde.\n\n");
+
+          // Fin de operación.
+          break;
+        }
+
+        // Imprimimos información sobre la transmisión.
+        printf("\t- Enviados %li, Total %li, Porcentaje %i%c\n", datos_recibidos, longitud_archivo, (int)((datos_recibidos * 100) / longitud_archivo), '%');
+      }
+
+      // Eliminamos el archivo zip
+      sprintf(comando_final, "rm -f %s", nombre_archivo_con_extension);
+      system(comando_final);
+
+      // Mostramos información al usuario.
+      printf("Ha finalizado el envío de información.\n");
+
+      // Fin de operación.
       break;
 
     case OPERACION_SUBIR_ARCHIVOS:
@@ -348,7 +497,7 @@ int main(void) // No se requieren argumentos para el programa principal.
         );
 
         // Print de debug.
-        printf("\t- Recibidos %li, Total %li, Porcentaje %i\%\n", datos_recibidos, longitud_archivo, (int)((datos_recibidos * 100) / longitud_archivo));
+        printf("\t- Recibidos %li, Total %li, Porcentaje %i%c\n", datos_recibidos, longitud_archivo, (int)((datos_recibidos * 100) / longitud_archivo), '%');
       }
 
       // Guardamos el último proceso de escritura en el archivo.

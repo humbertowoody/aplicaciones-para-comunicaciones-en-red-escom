@@ -28,6 +28,7 @@
 void menu_principal(void);
 void listar_archivos(void);
 void subir_archivos(void);
+void descargar_archivos(void);
 
 // Función principal.
 int main(void) // No se requieren argumentos para el programa principal.
@@ -72,7 +73,7 @@ int main(void) // No se requieren argumentos para el programa principal.
       break;
 
     case OPERACION_DESCARGAR_ARCHIVOS:
-      printf("Descarga de archivos no implementada\n");
+      descargar_archivos();
       break;
 
     case OPERACION_SUBIR_ARCHIVOS:
@@ -462,6 +463,7 @@ void subir_archivos(void)
         0                  // Sin opciones.
     );
 
+    // Validamos que hayamos enviado los datos correctamente.
     if (resultado_operacion <= 0)
     {
       // Mostramos un mensaje de error.
@@ -479,7 +481,7 @@ void subir_archivos(void)
     }
 
     // Imprimimos información sobre la transmisión.
-    printf("\t- Enviados %li, Total %li, Porcentaje %i\%\n", progreso_envio, longitud_comprimido, (int)((progreso_envio * 100) / longitud_comprimido));
+    printf("\t- Enviados %li, Total %li, Porcentaje %i%c\n", progreso_envio, longitud_comprimido, (int)((progreso_envio * 100) / longitud_comprimido), '%');
   }
 
   // Eliminamos el archivo zip
@@ -488,4 +490,238 @@ void subir_archivos(void)
 
   // Mensaje final de ejcución.
   printf("Fin de envío de archivos/carpeta.\n\n");
+}
+
+/**
+ * @brief Función que permite al usuario especificar la ruta de un archivo/directorio dentro del
+ *        servidor y descargarlo localmente.
+ */
+void descargar_archivos(void)
+{
+  // Variables locales.
+  char ruta[TAM_BUFFER],                  // Ruta del archivo/carpeta a descargar
+      buffer[TAM_BUFFER],                 // Buffer para operaciones de lectura/escritura.
+      comando_zip[1024],                  // Comando usado para comprimir el archivo/directorio.
+      nombre_archivo_con_extension[1024]; // Nombre dle archivo final con su extensión.
+  int descriptor_socket,                  // El descriptor del socket de conexión.
+      resultado_operacion;                // Para almacenar el resultado de alguna operación (conexión, envío y/o recepción de datos, etc).
+  long longitud_comprimido,               // La longitud final del archivo comprimido.
+      datos_leidos;                       // Los datos leídos en una operación.
+  struct sockaddr_in direccion_servidor;  // Estructura con la información del servidor.
+  FILE *archivo;                          // Archivo comprimido a enviar.
+
+  // Creamos el socket.
+  descriptor_socket = socket(
+      AF_INET,     // IPv4
+      SOCK_STREAM, // Socket de flujo.
+      0            // Todos los protocolos
+  );
+
+  // Validamos el socket.
+  if (descriptor_socket < 0)
+  {
+    // Mostramos mensaje de error y volvemos al menú principal.
+    printf("Error: No se ha podido crear el socket.\n");
+    printf("Inténtalo de nuevo más tarde.\n\n");
+    return;
+  }
+
+  // Pre-llenamos la estructura con ceros.
+  memset(&direccion_servidor, 0, sizeof(direccion_servidor));
+
+  // Llenamos la estructura con la información del servidor.
+  direccion_servidor.sin_family = AF_INET;                     // IPv4
+  direccion_servidor.sin_port = htons(PUERTO_SERVIDOR);        // Puerto a utilizar (en formato de Network Short).
+  direccion_servidor.sin_addr.s_addr = inet_addr(IP_SERVIDOR); // La dirección IP del servidor (string) en formato in_addr_t.
+
+  // Realizamos la conexión.
+  resultado_operacion = connect(
+      descriptor_socket,                      // El socket a utilizaqr.
+      (struct sockaddr *)&direccion_servidor, // Cast de la estructura de dirección del servidor.
+      sizeof(direccion_servidor)              // Tamaño de la estructura con la información del servidor.
+  );
+
+  // Validamos la conexión.
+  if (resultado_operacion < 0)
+  {
+    // Mostramos mensaje de error.
+    printf("Error: ¡No se ha podido realizar la conexión con el servidor!\n");
+    printf("(¿Está el servidor corriendo en %s:%i?)\n", IP_SERVIDOR, PUERTO_SERVIDOR);
+    printf("Inténtalo de nuevo más tarde.\n\n");
+
+    // Cerramos el socket.
+    close(descriptor_socket);
+
+    // Volvemos al menú principal.
+    return;
+  }
+
+  // Creamos la cadena de caracteres con el ID de operación.
+  sprintf(buffer, "%i", OPERACION_DESCARGAR_ARCHIVOS);
+
+  // Enviamos el ID de la operación.
+  resultado_operacion = send(
+      descriptor_socket, // El descriptor del socket que queremos usar.
+      buffer,            // El dato a enviar.
+      sizeof(buffer),    // El tamaño del dato que enviaremos.
+      0                  // No usamos banderas.
+  );
+
+  // Validamos que se haya enviado correctamente la información.
+  if (resultado_operacion < 0)
+  {
+    // Mostramos mensaje de error.
+    printf("Error: No se ha podido enviar el ID de la operación al servidor.\n");
+    printf("Inténtalo de nuevo más tarde.\n\n");
+
+    // Cerramos el socket.
+    close(descriptor_socket);
+
+    // Volvemos al menú principal.
+    return;
+  }
+
+  // Mostramos información al usuario.
+  printf("Ha elegido descargar archivo/carpeta desde servidor.\n");
+
+  // Obtenemos la ruta del archivo/carpeta a subir.
+  printf("Introduce la ruta al archivo/carpeta que quieras descargar desde el servidor.\n> ");
+  scanf("%s", ruta);
+
+  // Mostramos la información capturada.
+  printf("\nOperación a realizar:\n");
+  printf("- Descargaremos el archivo/carpeta: %s\n", ruta);
+
+  // Enviamos la ruta del archivo/carpeta al servidor.
+  resultado_operacion = send(
+      descriptor_socket, // El descriptor del socket que queremos usar.
+      ruta,              // La ruta del archivo/carpeta a descargar.
+      sizeof(ruta),      // El tamaño del dato que enviaremos.
+      0                  // No usamos banderas.
+  );
+
+  // Validamos que se haya enviado correctamente la información.
+  if (resultado_operacion < 0)
+  {
+    // Mostramos mensaje de error.
+    printf("Error: No se ha podido enviar la ruta del archivo/carpeta a descargar al servidor.\n");
+    printf("Inténtalo de nuevo más tarde.\n\n");
+
+    // Cerramos el socket.
+    close(descriptor_socket);
+
+    // Volvemos al menú principal.
+    return;
+  }
+
+  // Recibimos del servidor la cantidad de bytes del archivo comprimido a recibir.
+  resultado_operacion = recv(
+      descriptor_socket, // El descriptor del socket donde recibiremos los datos.
+      buffer,            // El buffer dónde guardaremos la información recibida.
+      sizeof(buffer),    // El tamaño máximo de la información a recibir.
+      0                  // No usamos banderas
+  );
+
+  // Validamos que se haya recibido algo.
+  if (resultado_operacion <= 0)
+  {
+    // Mostramos mensaje de error.
+    printf("Error: No se ha podido recibir la longitud de la información a descargar, o bien, el archivo/directorio especificado no existe.\n");
+    printf("Inténtalo de nuevo más tarde.\n\n");
+
+    // Cerramos el socket.
+    close(descriptor_socket);
+
+    // Volvemos al menú principal.
+    return;
+  }
+
+  // Añadimos nuestro EOF a la cadena recibida.
+  buffer[resultado_operacion] = '\0';
+
+  // Convertimos nuestra cadena en un entero.
+  longitud_comprimido = atoi(buffer);
+
+  // Mostramos información.
+  printf("\t- Se recibirán %li bytes desde el servidor.\n", longitud_comprimido);
+
+  // Generamos el nombre del archivo destino con su extensión.
+  sprintf(nombre_archivo_con_extension, "%s.zip", NOMBRE_ARCHIVO_ZIP_CLIENTE);
+
+  // Creamos un archivo vacío en modo escritura.
+  archivo = fopen(nombre_archivo_con_extension, "w");
+
+  // Ciclo para recibir datos.
+  datos_leidos = 0;
+  while (datos_leidos < longitud_comprimido)
+  {
+    // Recibir datos.
+    resultado_operacion = recv(
+        descriptor_socket, // El cosket por el cual recibiremos los datos.
+        buffer,            // El buffer para almacenar los datos.
+        sizeof(buffer),    // El tamaño máximo de datos a recibir
+        0                  // Sin opciones.
+    );
+
+    // Validamos que se hayan recibido datos.
+    if (resultado_operacion <= 0)
+    {
+      // Mensaje de error.
+      printf("Error: NO se ha recibido ningún dato del servidor en descarga de archivo.\n");
+      printf("Inténtalo de nuevo más tarde.\n\n");
+
+      // Cerramos el archivo.
+      fclose(archivo);
+
+      // Cerramos el socket.
+      close(descriptor_socket);
+
+      // Regresamos al menú principal.
+      return;
+    }
+
+    // Escribismos los datos en el archivo.
+    datos_leidos += fwrite(
+        buffer,              // De dónde leeremos los datos a escribir en el archivo.
+        1,                   // Cuántos bytes mide cada ítem.
+        resultado_operacion, // El número de ítems.
+        archivo              // El archivo dónde escribiremos los datos.
+    );
+
+    // Print de debug.
+    printf("\t- Recibidos %li, Total %li, Porcentaje %i%c\n", datos_leidos, longitud_comprimido, (int)((datos_leidos * 100) / longitud_comprimido), '%');
+  }
+
+  // Guardamos el último proceso de escritura en el archivo.
+  fflush(archivo);
+
+  // Cerramos el archivo.
+  fclose(archivo);
+
+  // Print de información.
+  printf("Fin de recepción de datos.\n");
+
+  // Generamos el comando final de unzip.
+  sprintf(comando_zip, "unzip %s", nombre_archivo_con_extension);
+
+  // Debug comando unzip
+  printf("Debug comando unzip: %s\n", comando_zip);
+
+  // Ejecutamos comando de descompresión unzip.
+  resultado_operacion = system(comando_zip);
+
+  // Validamos que se haya descomprimido correctamente.
+  if (resultado_operacion != 0)
+  {
+    // Mostramos mensaje de error.
+    printf("Error: No se ha podido ejecutar el comando de descompresión correctamente.\n");
+    printf("Inténtalo de nuevo más tarde.\n\n");
+  }
+
+  // Eliminamos el archivo.
+  sprintf(comando_zip, "rm -f %s", nombre_archivo_con_extension);
+  system(comando_zip);
+
+  // Mensaje final de operación.
+  printf("Fin de recepción de archivo/carpeta.\n");
 }
