@@ -1,0 +1,6 @@
+# Ignoramos la carpeta destino del servidor para no subirla a GitHub :D
+archivos-servidor/
+
+# Ignoramos los binarios
+cliente
+servidor
