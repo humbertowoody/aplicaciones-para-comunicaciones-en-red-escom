@@ -1,0 +1,6 @@
+# Para ignorar los archivos descargados en la carpeta del cliente.
+biblioteca_cliente/*.mp3
+
+# Ignoramos los binarios.
+cliente
+servidor
