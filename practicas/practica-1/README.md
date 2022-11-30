@@ -40,7 +40,7 @@ Para ejecutar el servidor.
 
 ## Configuración del programa
 
-Para modificar los parámetros de configuración del programa, se tendrá que 
+Para modificar los parámetros de configuración del programa, se tendrá que
 modificar el archivo `constantes.h`, el cual contiene las siguientes opciones:
 
 - Puerto del Servidor.
@@ -54,6 +54,6 @@ modificar el archivo `constantes.h`, el cual contiene las siguientes opciones:
 
 ## Datos de la Materia
 
-- Aplicaciones para comunicaciones en Red
+- Aplicaciones para comunicaciones en red
 - 3CM13
 - Escuela Superior de Cómputo del Instituto Politécnico Nacional
