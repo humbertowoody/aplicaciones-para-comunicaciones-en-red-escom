@@ -354,6 +354,7 @@ void *hilo_cliente(void *argumento)
   char *buffer;                                                     // El buffer para almacenar los datos recibidos.
   int temporal;                                                     // Variable temporal.
   usuario usuario_actual;                                           // Para almacenar el usuario actual de este hilo.
+  cola_usuarios *elemento_encontrado;                               // Un apuntador para las operaciones de búsqueda.
 
   // Asignamos tamaño del búffer.
   buffer = (char *)malloc(sizeof(mensaje));
@@ -455,6 +456,20 @@ void *hilo_cliente(void *argumento)
 
     // Deserializamos el mensaje recibido.
     mensaje_recibido = (mensaje *)buffer;
+
+    // Validamos si es un mensaje directo para tratar de completar la información.
+    if (mensaje_recibido->tipo == MSJ_PRIVADO)
+    {
+      // Buscamos al usuario.
+      elemento_encontrado = encontrar_usuario(*argumento_hilo->usuarios_conectados, mensaje_recibido->destinatario);
+
+      // Si lo encontramos asignamos la edad correcta.
+      if (elemento_encontrado != NULL)
+      {
+        // Asignamos el valor del servidor.
+        mensaje_recibido->destinatario = elemento_encontrado->data_usuario;
+      }
+    }
 
     // Imprimimos mensaje.
     printf("\t[%i] - ", argumento_hilo->socket);

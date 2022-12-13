@@ -220,3 +220,27 @@ void transmitir_mensaje_a_cola_de_usuarios(cola_usuarios *nodo, mensaje msj_a_tr
   // Desbloqueamos el mutex
   pthread_mutex_unlock(*mutex);
 }
+
+/**
+ * @brief Función que permite encontrar un usuario dentro de la lista ligada.
+ *
+ * @param nodo Un apuntador al nodo inicial de la lista ligada.
+ * @param usuario_a_buscar El usuarioq ue buscamos
+ * @return cola_usuarios* Un apuntador al nodo con la información que se busca o NULL en caso de no encontrarse.
+ */
+cola_usuarios *encontrar_usuario(cola_usuarios *nodo, usuario usuario_a_buscar)
+{
+  // Iteramos sobre la lista.
+  while (nodo != NULL)
+  {
+    // Validamos si encontramos al usuario que buscamos.
+    if (strcmp(nodo->data_usuario.nombre, usuario_a_buscar.nombre) == 0)
+    {
+      // Regresamos el nodo actual.
+      return nodo;
+    }
+  }
+
+  // No encontramos un usuario con el mismo nombre.
+  return NULL;
+}
