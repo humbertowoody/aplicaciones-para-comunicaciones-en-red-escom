@@ -31,10 +31,6 @@
  */
 int agregar_en_cola(cola_usuarios **cola, usuario usuario_nuevo, int desc_socket, pthread_mutex_t **mutex)
 {
-  if (*mutex == NULL)
-  {
-    printf("LA PUTA MADRE EL MUTEX ES NULO agregar!\n");
-  }
   // Variables locales.
   cola_usuarios *temporal, // Un apuntador temporal para las iteraciones.
       *nuevo;              // Un apuntador para el nuevo elemento de la cola.
@@ -96,23 +92,22 @@ int agregar_en_cola(cola_usuarios **cola, usuario usuario_nuevo, int desc_socket
  */
 int eliminar_de_cola(cola_usuarios **cola, int socket_usuario, pthread_mutex_t **mutex)
 {
-  if (*mutex == NULL)
-  {
-    printf("LA PUTA MADRE EL MUTEX ES NULO eliminar!\n");
-  }
   // Variables locales.
   cola_usuarios *iterador, // Variable para iterar por la cola.
       *previo;             // Variable para almacenar la referencia al elemento inmediato anterior.
 
+  // Bloqueamos el mutex.
+  pthread_mutex_lock(*mutex);
+
   // Verificamos si la cola está vacía.
   if ((*cola) == NULL)
   {
+    // Desbloqueamos el mutex.
+    pthread_mutex_unlock(*mutex);
+
     // Como la cola está vacía, regresamos un error.
     return EJECUCION_ERROR;
   }
-
-  // Bloqueamos el mutex.
-  pthread_mutex_lock(*mutex);
 
   // Iniciamos el iterador en el principio de la cola.
   iterador = (*cola);
@@ -138,7 +133,7 @@ int eliminar_de_cola(cola_usuarios **cola, int socket_usuario, pthread_mutex_t *
   iterador = iterador->siguiente;
 
   // Iteramos en la cola hasta encontrar el elemento que buscamos.
-  while (iterador->siguiente != NULL)
+  while (iterador != NULL)
   {
     // Verificamos si es el elmento que buscamos.
     if (iterador->socket == socket_usuario)
@@ -179,7 +174,7 @@ void imprimir_cola(cola_usuarios *nodo)
   printf("[");
   while (nodo != NULL)
   {
-    printf("%s%s", nodo->data_usuario.nombre, nodo->siguiente == NULL ? "" : ",");
+    printf("(%s,%i)%s", nodo->data_usuario.nombre, nodo->socket, nodo->siguiente == NULL ? "" : ",");
     nodo = nodo->siguiente;
   }
   printf("]\n");

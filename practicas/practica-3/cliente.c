@@ -213,7 +213,7 @@ int main(void)
     mensaje_a_enviar.contenido[strcspn(mensaje_a_enviar.contenido, "\n")] = 0;
 
     // Validamos que no sea una cadena vacía.
-    if (strlen(mensaje_a_enviar.contenido) <= 1)
+    if (strlen(mensaje_a_enviar.contenido) <= 0)
     {
       // Si lo es, saltamos el ciclo.
       continue;

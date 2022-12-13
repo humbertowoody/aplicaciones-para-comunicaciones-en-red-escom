@@ -314,15 +314,6 @@ int main(void)
     // Aumentamos el número de clientes conectados.
     num_clientes++; // Usamos ++ porque la posición actual será la que usaremos para las asignaciones.
 
-    // Crecemos el arreglo de descriptores de hilos.
-    // descriptores_hilo_cliente = (pthread_t *)realloc(descriptores_hilo_cliente, (num_clientes + 1) * sizeof(pthread_t));
-
-    // Crecemos el arreglo de argumentos para los hilos.
-    // argumentos_clientes = (arg_hilo_cliente *)realloc(argumentos_clientes, (num_clientes + 1) * sizeof(arg_hilo_cliente));
-
-    // Informamos de la operación.
-    // printf("\t- ✅ Arreglos de argumentos e hilos aumentado correctamente a %zu usuarios.\n", num_clientes + 1);
-
     // Creamos el argumento para el hilo a partir del mensaje recibido.
     argumentos_clientes[num_clientes].usuarios_conectados = &usuarios_conectados;
     argumentos_clientes[num_clientes].socket = descriptor_socket_cliente;
@@ -342,12 +333,6 @@ int main(void)
     // Mensaje de confirmación
     printf("\t- ✅ Hilo iniciado correctamente para el cliente nuevo.\n");
   }
-
-  // Liberamos la memoria del arreglo de argumentos.
-  // free(argumentos_clientes);
-
-  // Liberamos la memoria del arreglo de descriptores de hilos.
-  // free(descriptores_hilo_cliente);
 
   // Fin de la ejecución, realmente jamás llegaremos aquí.
   return EJECUCION_EXITOSA;
@@ -397,7 +382,7 @@ void *hilo_cliente(void *argumento)
     close(argumento_hilo->socket);
 
     // Finalizamos la ejecución.
-    return EJECUCION_ERROR;
+    return (void *)EJECUCION_ERROR;
   }
 
   // Deserializamos el mensaje.
@@ -495,6 +480,8 @@ void *hilo_cliente(void *argumento)
   {
     // Mostrar mensaje de error.
     printf("\t[%i] - Error: No se pudo eliminar de la cola el usuario: %s\n", argumento_hilo->socket, usuario_actual.nombre);
+    printf("\t[%i] - Cola de usuarios: ", argumento_hilo->socket);
+    imprimir_cola(*argumento_hilo->usuarios_conectados);
   }
   else
   {
@@ -508,5 +495,5 @@ void *hilo_cliente(void *argumento)
   free(buffer);
 
   // Finalizamos ejecución de hilo.
-  return EJECUCION_EXITOSA;
+  return (void *)EJECUCION_EXITOSA;
 }
