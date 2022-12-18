@@ -29,6 +29,14 @@ Para ejecutar cualquiera de los programas, bastará con usar:
 
 Para ejecutar el servidor.
 
+### Pruebas con Postman
+
+Para facilitar las pruebas del servidor se incluye una colección de [Postman][url-postman] con la cual se podrán hacer pruebas de forma fácil y rápida.
+
+La colección se llama `Práctica 4 - Servidor HTTP.postman_collection.json` y para
+utilizarla deberás importarla en tu [Postman local][url-postman] y podrás utilizarla
+para probar cada una de las rutas en el servidor.
+
 ## Configuración del programa.
 
 Para modificar los parámetros de configuración de programa, se deben considerar
@@ -66,3 +74,5 @@ que realizamos, por ello, las opciones disponibles son:
 - Aplicaciones para comunicaciones en red
 - 3CM13
 - Escuela Superior de Cómputo del Instituto Politécnico Nacional
+
+[url-postman]: https://www.postman.com/downloads/
